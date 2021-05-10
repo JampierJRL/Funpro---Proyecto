@@ -50,12 +50,12 @@ struct Equipo {
 };
 
 struct Jugador {
-	int DNI, edad;
+	int DNI;
+	int edad;
 	char nombre[30], nacionalidad[20], puesto[20];
 	float altura, peso;
 	struct Equipo equipo;
 };
-
 
 
 //Prototipos de Utils
@@ -68,10 +68,11 @@ void leerLetrasYNumeros(char dato[]);
 void menuPrincipal1();
 void numJugadores(int* n);
 void ingresoDatos(Jugador* ptr_jugador, int n);
+void mostrarJugador(Jugador* ptr_jugador, int numDeJugador);
 
 //CASE 1
 void buscarJugador(Jugador* j, int n);
-int busquedaBinaria(Jugador* j, int n, int datobuscado);
+int busquedaBinaria(Jugador*& j, int datobuscado, int inicio, int fin);
 void modificarDatos(Jugador* j, int z);
 //case 2
 void buscarDNI(Jugador* j, int n);
@@ -101,7 +102,6 @@ int main() {
 	setlocale(LC_ALL, "spanish");
 
 	int cantJugadores, opcion;
-	Equipo ligas[100];
 
 	numJugadores(&cantJugadores);
 	Jugador* jugadores = new Jugador[cantJugadores];
@@ -146,10 +146,13 @@ int main() {
 			system("cls");
 			eliminarJugador(jugadores, cantJugadores);
 			break;
+		case 8: 
+			system("cls");
+			reporteJugadores(jugadores, cantJugadores);
 		}
 		system("pause");
 
-	} while (opcion != 8);
+	} while (opcion != 9);
 	delete[] jugadores;
 
 	return 0;
@@ -232,7 +235,8 @@ void menuPrincipal1() {
 	cout << "\n\t| 1. Modificar Datos por DNI      | 5. Mostrar Jugadores de la misma Nacionalidad   |";
 	cout << "\n\t| 2. Buscar Jugador por DNI       | 6. Mostrar Jugadores en Ranking de Copas        |";
 	cout << "\n\t| 3. Ordenar y Mostrar por Edad   | 7. Eliminar Jugador                             |";
-	cout << "\n\t| 4. Ordenar y Mostrar por Equipo | 8. Salir                                        |";
+	cout << "\n\t| 4. Ordenar y Mostrar por Equipo | 8. Reportar todos los jugadores                 |";
+	cout << "\n\t| 9. Salir                        |                                                 |";
 	cout << "\n\t|---------------------------------|-------------------------------------------------|";
 	cout << "\t\t\nIngrese una opcion: ";
 }
@@ -240,7 +244,7 @@ void menuPrincipal1() {
 void numJugadores(int* cant) {
 	do {
 		cout << "\n\n\tIngrese la cantidad de jugadores: ";
-		cin >> *cant;
+		*cant = leerEntero();
 
 	} while (*cant <= 0);
 	cout << "--------------------------------" << endl;
@@ -253,21 +257,26 @@ void ingresoDatos(Jugador* ptr_jugador, int n) {
 		cout << endl;
 		cout << "\tJugador N° " << i + 1 << endl;
 		cout << "\t\tIngrese el Dni: ";
-		while ((ptr_jugador + i)->DNI < 10000000 || (ptr_jugador + i)->DNI>99999999) {
-			cout << "\t\tEl Dni debe tener 8 digitos, ingrese nuevamente: ";
-			fflush(stdin);
-			cin >> ((ptr_jugador + i)->DNI);
-		};
+		do {
+			(ptr_jugador + i)->DNI = leerEntero();
+			if ((ptr_jugador + i)->DNI < 10000000 || (ptr_jugador + i)->DNI>99999999) {
+				cout << "\t\tEl Dni debe tener 8 digitos, ingrese nuevamente: ";
+			}
+		}while ((ptr_jugador + i)->DNI < 10000000 || (ptr_jugador + i)->DNI>99999999);
 		fflush(stdin);
 		cout << "\t\tIngrese su Nombre: ";
 		cin.getline((ptr_jugador + i)->nombre, 30);
-		cout << "\t\tIngrese su Edad: ";
-		cin >> ((ptr_jugador + i)->edad);
+		fflush(stdin);
+		cout << "\t\tIngrese su Edad en years: ";
+		(ptr_jugador + i)->edad = leerEntero();
+		fflush(stdin);
 		cout << "\t\tIngrese su Altura: ";
-		cin >> ((ptr_jugador + i)->altura);
+		(ptr_jugador + i)->altura = leerReal();
+		fflush(stdin);
 		cout << "\t\tIngrese su Nacionalidad: ";
 		fflush(stdin);
 		cin.getline((ptr_jugador + i)->nacionalidad, 20);
+		fflush(stdin);
 		cout << "\t\tIngrese su Puesto: ";
 		cin.getline((ptr_jugador + i)->puesto, 20);
 		fflush(stdin);
@@ -290,41 +299,25 @@ void buscarJugador(Jugador* j, int n) {
 		cout << "Ingrese DNI de jugador: ";
 		datobuscado = leerEntero();
 	} while (datobuscado < 10000000 || datobuscado>99999999);
-	z = busquedaBinaria(j, n, datobuscado);
+	z = busquedaBinaria(j, datobuscado, 0, n-1);
 	if (z != -1) {
-		cout << "\nDatos del jugador: ";
-		cout << "\n\tDNI: " << j[z].DNI;
-		cout << "\n\tNombre: " << j[z].nombre;
-		cout << "\n\tEdad: " << j[z].edad;
-		cout << "\n\tAltura: " << j[z].altura;
-		cout << "\n\tNacionalidad: " << j[z].nacionalidad;
-		cout << "\n\tPuesto: " << j[z].puesto;
-		cout << "\n\tEquipo: " << j[z].equipo.nombreEquipo;
-		cout << "\n\tLiga: " << j[z].equipo.nombreLiga;
-		cout << "\n\tCopas: " << j[z].equipo.copas;
-		cout << "\n";
-		modificarDatos(j, z);
+		mostrarJugador(j, z);
 	}
 	else {
 		cout << "DNI no se ha encontrado";
 
 	}
 }
-int busquedaBinaria(Jugador* j, int n, int datobuscado) {
-	int inferior, superior, centro;
-	inferior = 0;
-	superior = n - 1;
-	while (inferior <= superior) {
-		centro = (inferior + superior) / 2;
-		if (datobuscado == j[centro].DNI) {
-			return centro;
-		}
-		else {
-			if (datobuscado > j[centro].DNI)
-				inferior = centro + 1;
-			else
-				superior = centro - 1;
-		}
+int busquedaBinaria(Jugador *&j, int datobuscado, int inicio, int fin) {
+	int centro = inicio + (fin - inicio) / 2;
+	if(inicio > fin) {
+		return -1;
+	} else if(j[centro].DNI == datobuscado) {
+		return centro;
+	} else if(j[centro].DNI > datobuscado) {
+		return busquedaBinaria(j, datobuscado, inicio, centro - 1);
+	} else {
+		return busquedaBinaria(j, datobuscado, centro + 1, fin);
 	}
 	return -1;
 }
@@ -406,7 +399,7 @@ void buscarDNI(Jugador* j, int n) {
 	system("cls");
 	cout << "Ingrese DNI de jugador: ";
 	datobuscado = leerEntero();
-	z = busquedaBinaria(j, n, datobuscado);
+	z = busquedaBinaria(j, datobuscado, 0, n-1);
 	if (z != -1) {
 		cout << "\nDatos del jugador: ";
 		cout << "\n\tDNI: " << j[z].DNI;
@@ -562,18 +555,21 @@ void reporteJugadores(Jugador* ptr_jugador, int n) {
 	cout << "\n-------MOSTRANDO DATOS DE LOS JUGADORES TOTALES-------------\n\n";
 	for (int i = 0; i < n; i++) {
 		cout << "\tJugador N° " << i + 1 << endl;
-		cout << "\n\t\tDni: " << ((ptr_jugador + i)->DNI) << endl;
-		cout << "\t\tNombre: " << ((ptr_jugador + i)->nombre) << endl;
-		cout << "\t\tEdad: " << ((ptr_jugador + i)->edad) << endl;
-		cout << "\t\tAltura: " << ((ptr_jugador + i)->altura) << endl;
-		cout << "\t\tNacionalidad: " << ((ptr_jugador + i)->nacionalidad) << endl;
-		cout << "\t\tPuesto: " << ((ptr_jugador + i)->puesto) << endl;
-		cout << "\t\tEquipo: " << ((ptr_jugador + i)->equipo.nombreEquipo) << endl;
-		cout << "\t\tLiga: " << ((ptr_jugador + i)->equipo.nombreLiga) << endl;
-		cout << "\t\tN° de Copas del equipo: " << ((ptr_jugador + i)->equipo.copas) << endl;
-		cout << "------------------------------" << endl;
-		cout << endl;
+		mostrarJugador(ptr_jugador, i);
 	}
 
 }
 
+void mostrarJugador(Jugador* ptr_jugador, int posJugadorArray) {
+	cout << "\n\t\tDni: " << ((ptr_jugador + posJugadorArray)->DNI) << endl;
+	cout << "\t\tNombre: " << ((ptr_jugador + posJugadorArray)->nombre) << endl;
+	cout << "\t\tEdad: " << ((ptr_jugador + posJugadorArray)->edad) << endl;
+	cout << "\t\tAltura: " << ((ptr_jugador + posJugadorArray)->altura) << endl;
+	cout << "\t\tNacionalidad: " << ((ptr_jugador + posJugadorArray)->nacionalidad) << endl;
+	cout << "\t\tPuesto: " << ((ptr_jugador + posJugadorArray)->puesto) << endl;
+	cout << "\t\tEquipo: " << ((ptr_jugador + posJugadorArray)->equipo.nombreEquipo) << endl;
+	cout << "\t\tLiga: " << ((ptr_jugador + posJugadorArray)->equipo.nombreLiga) << endl;
+	cout << "\t\tN° de Copas del equipo: " << ((ptr_jugador + posJugadorArray)->equipo.copas) << endl;
+	cout << "------------------------------" << endl;
+	cout << endl;
+}
